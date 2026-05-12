@@ -1,0 +1,648 @@
+import { useState } from 'react';
+import { 
+  Heart, ShieldAlert, BarChart3, 
+  Award, Users, Zap, Smile, 
+  AlertTriangle, LogOut,
+  ShieldCheck, CheckCircle2, Target, Trophy,
+  Plus, Send, Check, UserPlus
+} from 'lucide-react';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, 
+  PolarRadiusAxis, ResponsiveContainer 
+} from 'recharts';
+
+const USERS = [
+  { id: 'leader', name: 'หัวหน้าทีม (Leader)', role: 'leader', avatar: '👑', color: 'bg-amber-100 text-amber-700' },
+  { id: 'jenny', name: 'เจนนี่', role: 'member', avatar: '👩‍💻', color: 'bg-indigo-100 text-indigo-700' },
+  { id: 'benz', name: 'เบนซ์', role: 'member', avatar: '👨‍🎨', color: 'bg-emerald-100 text-emerald-700' },
+  { id: 'lukkaew', name: 'ลูกแก้ว', role: 'member', avatar: '👩‍🎨', color: 'bg-rose-100 text-rose-700' },
+];
+
+const DEFAULT_STATS = [
+  { subject: 'Teamwork', A: 80, fullMark: 100 },
+  { subject: 'Efficiency', A: 75, fullMark: 100 },
+  { subject: 'Growth Mindset', A: 85, fullMark: 100 },
+  { subject: 'Curiosity', A: 70, fullMark: 100 },
+];
+
+const NavItem = ({ active, onClick, icon, label, danger }) => (
+  <button 
+    onClick={onClick}
+    style={{
+      width: '100%', display: 'flex', alignItems: 'center', gap: '20px',
+      padding: '20px 24px', borderRadius: '2rem', transition: 'all 0.3s',
+      fontWeight: 900, border: 'none', cursor: 'pointer',
+      background: active ? (danger ? '#dc2626' : '#4f46e5') : 'transparent',
+      color: active ? '#fff' : '#64748b',
+      boxShadow: active ? (danger ? '0 25px 50px -12px rgba(127,29,29,0.4)' : '0 25px 50px -12px rgba(49,46,129,0.4)') : 'none',
+    }}
+    onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(30,41,59,0.8)'; e.currentTarget.style.color = '#fff'; } }}
+    onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; } }}
+  >
+    <span style={{ transform: active ? 'scale(1.25)' : 'scale(1)', transition: 'transform 0.3s', display: 'flex' }}>{icon}</span>
+    <span style={{ fontSize: '13px', letterSpacing: '-0.025em', fontStyle: 'italic', textTransform: 'uppercase' }}>{label}</span>
+  </button>
+);
+
+const StatusCard = ({ title, count, icon, color, borderColor, bgIcon }) => (
+  <div style={{
+    padding: '40px', borderRadius: '3rem', border: `2px solid ${borderColor}`,
+    background: color, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.2s', cursor: 'pointer'
+  }}
+    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; }}
+    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
+  >
+    <div>
+      <p style={{ fontSize: '10px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '8px' }}>{title}</p>
+      <p style={{ fontSize: '36px', fontWeight: 900, color: '#1e293b', letterSpacing: '-0.05em', fontStyle: 'italic' }}>{count}</p>
+    </div>
+    <div style={{
+      width: '64px', height: '64px', background: 'rgba(255,255,255,0.6)', borderRadius: '2rem',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)', border: '1px solid rgba(255,255,255,0.4)'
+    }}>
+      {icon}
+    </div>
+  </div>
+);
+
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(null); 
+  const [activeTab, setActiveTab] = useState('wellness');
+  const [selectedMemberId, setSelectedMemberId] = useState('jenny');
+
+  const [missions, setMissions] = useState([
+    { id: 1, title: 'ส่งรายงานสรุปสัปดาห์', category: 'Admin', xp: 100, status: 'approved', assignee: 'เจนนี่' },
+    { id: 2, title: 'เคลียร์ Bug ประจำโปรเจกต์ A', category: 'Dev', xp: 250, status: 'pending', assignee: 'เบนซ์' },
+    { id: 3, title: 'อัปโหลด Reference Design ใหม่', category: 'Design', xp: 150, status: 'todo', assignee: 'ลูกแก้ว' },
+  ]);
+  
+  const [newMissionTitle, setNewMissionTitle] = useState('');
+  const [newMissionCategory, setNewMissionCategory] = useState('General');
+  const [newMissionXP, setNewMissionXP] = useState('100');
+  const [newMissionAssignee, setNewMissionAssignee] = useState('');
+
+  const [praiseTo, setPraiseTo] = useState('');
+  const [praiseText, setPraiseText] = useState('');
+  const [praiseFeed, setPraiseFeed] = useState([
+    { id: 1, from: 'หัวหน้าทีม (Leader)', to: 'เจนนี่', text: 'วันนี้พรีเซนต์งานได้เป๊ะมากครับ ภูมิใจสุดๆ!', timestamp: '1 ชั่วโมงที่แล้ว', emoji: '🌟' },
+    { id: 2, from: 'เบนซ์', to: 'ลูกแก้ว', text: 'ขอบคุณที่ช่วยหา Bug นะครับ รอดตายแล้วเรา', timestamp: '2 ชั่วโมงที่แล้ว', emoji: '🙌' }
+  ]);
+
+  const [safeText, setSafeText] = useState('');
+  const [safeReports, setSafeReports] = useState([
+    { id: 1, text: 'ช่วงนี้รู้สึกว่าการประชุมตอนเย็นกินเวลาเลิกงานไปหน่อยครับ', timestamp: 'เมื่อวานนี้', status: 'Received' }
+  ]);
+
+  const [teamStats, setTeamStats] = useState({
+    jenny: JSON.parse(JSON.stringify(DEFAULT_STATS)),
+    benz: [
+      { subject: 'Teamwork', A: 90, fullMark: 100 },
+      { subject: 'Efficiency', A: 60, fullMark: 100 },
+      { subject: 'Growth Mindset', A: 70, fullMark: 100 },
+      { subject: 'Curiosity', A: 95, fullMark: 100 },
+    ],
+    lukkaew: JSON.parse(JSON.stringify(DEFAULT_STATS)),
+  });
+
+  const totalXP = missions.filter(m => m.status === 'approved').reduce((acc, curr) => acc + curr.xp, 0);
+
+  const addMission = () => {
+    if (!newMissionTitle.trim()) return;
+    const mission = {
+      id: Date.now(),
+      title: newMissionTitle,
+      category: newMissionCategory,
+      xp: parseInt(newMissionXP) || 0,
+      status: 'todo',
+      assignee: newMissionAssignee || 'Everyone'
+    };
+    setMissions([mission, ...missions]);
+    setNewMissionTitle('');
+    setNewMissionXP('100');
+    setNewMissionAssignee('');
+  };
+
+  const updateMissionStatus = (id, newStatus) => {
+    setMissions(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
+  };
+
+  const handleStatChange = (subject, value) => {
+    setTeamStats(prev => ({
+      ...prev,
+      [selectedMemberId]: prev[selectedMemberId].map(s => 
+        s.subject === subject ? { ...s, A: parseInt(value) } : s
+      )
+    }));
+  };
+
+  const handleSendPraise = () => {
+    if (!praiseTo || !praiseText.trim()) return;
+    const newPraise = { id: Date.now(), from: currentUser.name, to: praiseTo, text: praiseText, timestamp: 'เมื่อสักครู่', emoji: '💖' };
+    setPraiseFeed([newPraise, ...praiseFeed]);
+    setPraiseText('');
+    setPraiseTo('');
+  };
+
+  const handleSendSafe = () => {
+    if (!safeText.trim()) return;
+    const newReport = { id: Date.now(), text: safeText, timestamp: 'เมื่อสักครู่', status: 'Sent' };
+    setSafeReports([newReport, ...safeReports]);
+    setSafeText('');
+  };
+
+  /* ─── LOGIN SCREEN ─── */
+  if (!currentUser) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '896px', width: '100%' }}>
+          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+            <div style={{ display: 'inline-block', background: '#4f46e5', padding: '16px', borderRadius: '24px', fontStyle: 'italic', fontWeight: 900, fontSize: '30px', color: '#fff', marginBottom: '24px', boxShadow: '0 25px 50px -12px rgba(99,102,241,0.2)' }}>HOF</div>
+            <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#fff', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.05em', marginBottom: '16px' }}>Talesrunner Team</h1>
+            <p style={{ color: '#94a3b8', fontWeight: 500, letterSpacing: '0.05em' }}>ระบุตัวตนของคุณเพื่อเริ่มต้นการทำงาน</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+            {USERS.map(user => (
+              <button key={user.id} onClick={() => setCurrentUser(user)} style={{
+                position: 'relative', background: '#1e293b', border: '1px solid #334155',
+                padding: '32px', borderRadius: '3rem', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                transition: 'all 0.2s'
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(51,65,85,0.5)'; e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#1e293b'; e.currentTarget.style.borderColor = '#334155'; e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                <div style={{
+                  width: '96px', height: '96px', borderRadius: '2rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '48px', marginBottom: '24px', transition: 'transform 0.2s',
+                  background: user.id === 'leader' ? '#fef3c7' : user.id === 'jenny' ? '#e0e7ff' : user.id === 'benz' ? '#d1fae5' : '#ffe4e6',
+                  color: user.id === 'leader' ? '#b45309' : user.id === 'jenny' ? '#4338ca' : user.id === 'benz' ? '#059669' : '#be123c',
+                }}>
+                  {user.avatar}
+                </div>
+                <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#fff', fontStyle: 'italic', textTransform: 'uppercase', marginBottom: '4px' }}>{user.name}</h3>
+                <p style={{ fontSize: '10px', fontWeight: 900, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{user.role}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─── MAIN APP ─── */
+  const s = { /* shared style shortcuts */
+    card: { background: '#fff', borderRadius: '3.5rem', border: '1px solid #f1f5f9', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' },
+    label: { fontSize: '10px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' },
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: '#f8fafc', fontFamily: 'sans-serif' }}>
+
+      {/* ── SIDEBAR ── */}
+      <nav style={{ width: '320px', background: '#0f172a', color: '#fff', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ padding: '40px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
+            <div style={{ background: '#4f46e5', padding: '10px', borderRadius: '16px', fontStyle: 'italic', fontWeight: 900, fontSize: '20px' }}>HOF</div>
+            <span style={{ fontWeight: 900, fontSize: '24px', letterSpacing: '-0.05em', fontStyle: 'italic', textTransform: 'uppercase', color: '#818cf8' }}>Talesrunner</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <NavItem active={activeTab === 'wellness'} onClick={() => setActiveTab('wellness')} icon={<Zap size={20}/>} label="Runner's Condition" />
+            <NavItem active={activeTab === 'missions'} onClick={() => setActiveTab('missions')} icon={<Target size={20}/>} label="Team Missions" />
+            <NavItem active={activeTab === 'praise'} onClick={() => setActiveTab('praise')} icon={<Heart size={20}/>} label="Praise Board" />
+            <NavItem active={activeTab === 'safe'} onClick={() => setActiveTab('safe')} icon={<ShieldAlert size={20}/>} label="Safe Space" danger />
+            <NavItem active={activeTab === 'index'} onClick={() => setActiveTab('index')} icon={<BarChart3 size={20}/>} label="Excellence Index" />
+          </div>
+        </div>
+        <div style={{ marginTop: 'auto', padding: '32px', borderTop: '1px solid #1e293b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(30,41,59,0.5)', padding: '16px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ width: '48px', height: '48px', background: '#4f46e5', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{currentUser.avatar}</div>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <p style={{ fontWeight: 900, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.name}</p>
+              <p style={{ fontSize: '10px', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{currentUser.role}</p>
+            </div>
+            <button onClick={() => setCurrentUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: '8px', display: 'flex' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#f43f5e'}
+              onMouseLeave={e => e.currentTarget.style.color = '#475569'}
+            ><LogOut size={20} /></button>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── MAIN ── */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        {/* Header */}
+        <header style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', zIndex: 10 }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#1e293b', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.025em' }}>
+            {activeTab === 'wellness' && "⚡ Runner's Condition"}
+            {activeTab === 'missions' && '🎯 Team Missions'}
+            {activeTab === 'praise' && '🌟 Praise Board'}
+            {activeTab === 'safe' && '🛡️ Safe Space'}
+            {activeTab === 'index' && '📊 Excellence Index'}
+          </h2>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '10px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Logged in as</p>
+            <p style={{ fontSize: '12px', fontWeight: 700, color: '#4f46e5', textTransform: 'uppercase', letterSpacing: '-0.025em' }}>{currentUser.name}</p>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '40px', background: 'rgba(248,250,252,0.3)' }}>
+
+          {/* ── MISSIONS ── */}
+          {activeTab === 'missions' && (
+            <div style={{ maxWidth: '1024px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '80px' }}>
+              {/* Hero */}
+              <div style={{ background: '#4f46e5', padding: '40px', borderRadius: '3rem', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 25px 50px -12px rgba(99,102,241,0.3)' }}>
+                <div>
+                  <h3 style={{ fontSize: '30px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', marginBottom: '8px' }}>Weekly Objectives</h3>
+                  <p style={{ color: '#c7d2fe', opacity: 0.8 }}>เป้าหมายทีมประจำสัปดาห์</p>
+                </div>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  {[['Team XP', totalXP.toLocaleString()], ['Mission Done', missions.filter(m => m.status === 'approved').length]].map(([label, val]) => (
+                    <div key={label} style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', padding: '16px 24px', borderRadius: '24px', textAlign: 'center', minWidth: '120px' }}>
+                      <p style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', opacity: 0.6 }}>{label}</p>
+                      <p style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic' }}>{val}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Create Mission (leader only) */}
+              {currentUser.role === 'leader' && (
+                <div style={{ background: '#fff', padding: '32px', borderRadius: '2.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid #f8fafc', paddingBottom: '16px' }}>
+                    <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '8px', borderRadius: '12px', display: 'flex' }}><Plus size={18} strokeWidth={3} /></div>
+                    <h3 style={{ fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#1e293b' }}>Create New Team Mission</h3>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ ...s.label, display: 'block', marginBottom: '8px', marginLeft: '4px' }}>Task Description</label>
+                      <input value={newMissionTitle} onChange={e => setNewMissionTitle(e.target.value)} placeholder="ต้องให้ทีมทำอะไร..."
+                        style={{ width: '100%', background: '#f8fafc', border: '2px solid #f1f5f9', padding: '16px 24px', borderRadius: '16px', fontWeight: 700, fontSize: '14px', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
+                        onFocus={e => e.target.style.borderColor = '#6366f1'}
+                        onBlur={e => e.target.style.borderColor = '#f1f5f9'}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ ...s.label, display: 'block', marginBottom: '8px', marginLeft: '4px' }}>Category</label>
+                      <select value={newMissionCategory} onChange={e => setNewMissionCategory(e.target.value)}
+                        style={{ width: '100%', background: '#f8fafc', border: '2px solid #f1f5f9', padding: '16px 24px', borderRadius: '16px', fontWeight: 900, fontSize: '10px', textTransform: 'uppercase', outline: 'none', boxSizing: 'border-box' }}
+                      >
+                        <option>Admin</option><option>Dev</option><option>Design</option><option>General</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ ...s.label, display: 'block', marginBottom: '8px', marginLeft: '4px' }}>XP Reward</label>
+                      <input type="number" value={newMissionXP} onChange={e => setNewMissionXP(e.target.value)}
+                        style={{ width: '100%', background: '#f8fafc', border: '2px solid #f1f5f9', padding: '16px 24px', borderRadius: '16px', fontWeight: 900, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => e.target.style.borderColor = '#6366f1'}
+                        onBlur={e => e.target.style.borderColor = '#f1f5f9'}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ ...s.label, display: 'flex', alignItems: 'center', gap: '8px' }}><UserPlus size={12} /> Assign to:</span>
+                      {[...USERS.filter(u => u.role === 'member'), { id: 'everyone', name: '🌍 Everyone', avatar: '' }].map(user => (
+                        <button key={user.id}
+                          onClick={() => setNewMissionAssignee(user.id === 'everyone' ? 'Everyone' : user.name)}
+                          style={{
+                            padding: '6px 16px', borderRadius: '12px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase',
+                            border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                            background: (newMissionAssignee === (user.id === 'everyone' ? 'Everyone' : user.name) || (user.id === 'everyone' && newMissionAssignee === ''))
+                              ? '#4f46e5' : '#f1f5f9',
+                            color: (newMissionAssignee === (user.id === 'everyone' ? 'Everyone' : user.name) || (user.id === 'everyone' && newMissionAssignee === ''))
+                              ? '#fff' : '#94a3b8',
+                          }}
+                        >
+                          {user.avatar} {user.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={addMission} disabled={!newMissionTitle.trim()}
+                      style={{
+                        padding: '16px 40px', borderRadius: '16px', fontWeight: 900, textTransform: 'uppercase', fontSize: '12px',
+                        display: 'flex', alignItems: 'center', gap: '8px', border: 'none', cursor: newMissionTitle.trim() ? 'pointer' : 'not-allowed',
+                        background: newMissionTitle.trim() ? '#4f46e5' : '#f1f5f9',
+                        color: newMissionTitle.trim() ? '#fff' : '#cbd5e1',
+                        boxShadow: newMissionTitle.trim() ? '0 20px 25px -5px rgba(99,102,241,0.3)' : 'none',
+                        transition: 'all 0.2s', flexShrink: 0,
+                      }}
+                    >
+                      <Plus size={16} strokeWidth={3} /><span>Post Mission</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mission list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {missions.map(mission => (
+                  <div key={mission.id} style={{
+                    padding: '32px', borderRadius: '2.5rem', background: '#fff', border: '1px solid #f1f5f9',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    opacity: mission.status === 'approved' ? 0.5 : 1,
+                    boxShadow: mission.status !== 'approved' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                    transition: 'all 0.2s',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                      <div style={{
+                        width: '56px', height: '56px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        background: mission.status === 'approved' ? '#10b981' : mission.status === 'pending' ? '#fbbf24' : '#f1f5f9',
+                        color: mission.status === 'todo' ? '#94a3b8' : '#fff',
+                      }}>
+                        {mission.status === 'approved' ? <CheckCircle2 size={24} /> : <Target size={24} />}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8' }}>{mission.category}</span>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#4f46e5', background: '#eef2ff', padding: '2px 8px', borderRadius: '8px' }}>+{mission.xp} XP</span>
+                          <span style={{ fontSize: '10px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', fontStyle: 'italic' }}>@ {mission.assignee}</span>
+                        </div>
+                        <h4 style={{ fontSize: '18px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: mission.status === 'approved' ? '#94a3b8' : '#1e293b', textDecoration: mission.status === 'approved' ? 'line-through' : 'none' }}>{mission.title}</h4>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {currentUser.role === 'member' && mission.status === 'todo' && (
+                        <button onClick={() => updateMissionStatus(mission.id, 'pending')}
+                          style={{ background: '#4f46e5', color: '#fff', padding: '12px 24px', borderRadius: '16px', fontWeight: 900, textTransform: 'uppercase', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(99,102,241,0.2)', transition: 'transform 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <Send size={14} /><span>Submit Work</span>
+                        </button>
+                      )}
+                      {currentUser.role === 'leader' && mission.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => updateMissionStatus(mission.id, 'approved')}
+                            style={{ background: '#10b981', color: '#fff', padding: '12px 24px', borderRadius: '16px', fontWeight: 900, textTransform: 'uppercase', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', cursor: 'pointer', transition: 'transform 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                          >
+                            <Check size={14} strokeWidth={3} /><span>Approve</span>
+                          </button>
+                          <button onClick={() => updateMissionStatus(mission.id, 'todo')}
+                            style={{ background: '#ffe4e6', color: '#e11d48', padding: '12px 24px', borderRadius: '16px', fontWeight: 900, textTransform: 'uppercase', fontSize: '10px', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#fecdd3'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#ffe4e6'}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                      {mission.status === 'approved' && (
+                        <div style={{ color: '#10b981', fontWeight: 900, textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.1em', display: 'flex', alignItems: 'center' }}>
+                          <ShieldCheck size={16} style={{ marginRight: '8px' }} /> Verified
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pizza Party Progress */}
+              <div style={{ background: '#fffbeb', padding: '40px', borderRadius: '3rem', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: '32px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)' }}>
+                <div style={{ width: '80px', height: '80px', background: '#fbbf24', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', boxShadow: '0 20px 25px -5px rgba(251,191,36,0.3)', border: '4px solid #fff', flexShrink: 0 }}>🏆</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
+                    <div>
+                      <h4 style={{ fontSize: '20px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#92400e' }}>Team Goal: Pizza Party!</h4>
+                      <p style={{ color: 'rgba(120,53,15,0.6)', fontSize: '14px', fontWeight: 500 }}>สะสมให้ครบ 2,000 XP เพื่อปลดล็อกรางวัลใหญ่</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ color: '#92400e', fontWeight: 900, fontStyle: 'italic', fontSize: '24px' }}>{totalXP.toLocaleString()}</span>
+                      <span style={{ color: '#fbbf24', fontWeight: 900, fontStyle: 'italic', fontSize: '14px', marginLeft: '4px' }}>/ 2,000</span>
+                    </div>
+                  </div>
+                  <div style={{ width: '100%', background: 'rgba(253,230,138,0.4)', height: '16px', borderRadius: '999px', overflow: 'hidden', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)', border: '1px solid rgba(253,230,138,0.5)' }}>
+                    <div style={{ background: 'linear-gradient(to right, #fbbf24, #d97706)', height: '100%', borderRadius: '999px', transition: 'width 1s', width: `${Math.min((totalXP/2000)*100, 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── PRAISE BOARD ── */}
+          {activeTab === 'praise' && (
+            <div style={{ maxWidth: '1152px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '40px', paddingBottom: '80px' }}>
+              <div>
+                <div style={{ background: '#fff', padding: '32px', borderRadius: '2.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #e0e7ff', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '16px', opacity: 0.1 }}><Heart size={80} color="#4f46e5" /></div>
+                  <h3 style={{ fontSize: '20px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#1e293b', marginBottom: '24px' }}>Send some love!</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <select value={praiseTo} onChange={e => setPraiseTo(e.target.value)}
+                      style={{ width: '100%', background: '#f8fafc', border: '2px solid #f1f5f9', borderRadius: '16px', padding: '12px 16px', fontWeight: 700, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    >
+                      <option value="">เลือกเพื่อนร่วมทีม...</option>
+                      {USERS.filter(u => u.id !== currentUser.id).map(u => <option key={u.id} value={u.name}>{u.avatar} {u.name}</option>)}
+                    </select>
+                    <textarea value={praiseText} onChange={e => setPraiseText(e.target.value)} placeholder="ชมเพื่อนหน่อย..."
+                      style={{ width: '100%', background: '#f8fafc', border: '2px solid #f1f5f9', borderRadius: '16px', padding: '16px', minHeight: '100px', fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+                    />
+                    <button onClick={handleSendPraise}
+                      style={{ width: '100%', background: '#4f46e5', color: '#fff', padding: '16px', borderRadius: '16px', fontWeight: 900, textTransform: 'uppercase', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#4338ca'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#4f46e5'}
+                    >
+                      <Heart size={18} fill="currentColor" /> <span>Post to Board</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignContent: 'start' }}>
+                {praiseFeed.map(item => (
+                  <div key={item.id} style={{ background: '#fff', padding: '32px', borderRadius: '2.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9', transition: 'box-shadow 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1)'}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '30px' }}>{item.emoji}</div>
+                      <span style={{ fontSize: '9px', fontWeight: 900, color: '#cbd5e1', textTransform: 'uppercase' }}>{item.timestamp}</span>
+                    </div>
+                    <p style={{ color: '#334155', fontWeight: 500, marginBottom: '24px' }}>"{item.text}"</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f8fafc', paddingTop: '16px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }}>
+                      <span style={{ color: '#94a3b8' }}>From: {item.from}</span>
+                      <span style={{ color: '#4f46e5' }}>To: {item.to}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── SAFE SPACE ── */}
+          {activeTab === 'safe' && (
+            <div style={{ maxWidth: '896px', margin: '0 auto', paddingBottom: '80px', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+              <div style={{ background: '#dc2626', padding: '48px', borderRadius: '3.5rem', color: '#fff', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: '-40px', bottom: '-40px', opacity: 0.1 }}><ShieldAlert size={200} /></div>
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <h3 style={{ fontSize: '30px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', marginBottom: '16px' }}>Safe Space</h3>
+                  <p style={{ color: '#fecaca', marginBottom: '32px' }}>รายงานปัญหาแบบ Anonymous ข้อมูลจะส่งตรงถึงระบบการจัดการ</p>
+                  <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', padding: '8px', borderRadius: '2.5rem', display: 'flex', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)' }}>
+                    <input value={safeText} onChange={e => setSafeText(e.target.value)} placeholder="เล่าสิ่งที่กังวล..."
+                      style={{ flex: 1, background: 'transparent', border: 'none', padding: '16px 32px', color: '#fff', outline: 'none', fontWeight: 700, fontSize: '14px' }}
+                    />
+                    <button onClick={handleSendSafe}
+                      style={{ background: '#fff', color: '#dc2626', padding: '16px 32px', borderRadius: '2rem', fontWeight: 900, textTransform: 'uppercase', fontSize: '14px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: 'none', cursor: 'pointer', transition: 'transform 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >Report</button>
+                  </div>
+                </div>
+              </div>
+              {safeReports.map(report => (
+                <div key={report.id} style={{ background: '#fff', padding: '32px', borderRadius: '2.5rem', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
+                    <div style={{ width: '48px', height: '48px', background: '#f8fafc', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexShrink: 0 }}><ShieldCheck size={24} /></div>
+                    <div>
+                      <p style={{ color: '#475569', fontWeight: 500, marginBottom: '4px' }}>{report.text}</p>
+                      <p style={{ fontSize: '10px', fontWeight: 900, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{report.timestamp}</p>
+                    </div>
+                  </div>
+                  <span style={{ background: '#f8fafc', padding: '12px 24px', borderRadius: '16px', fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', border: '1px solid #f1f5f9', flexShrink: 0, marginLeft: '16px' }}>{report.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── WELLNESS ── */}
+          {activeTab === 'wellness' && (
+            <div style={{ maxWidth: '1152px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px', paddingBottom: '80px' }}>
+              {currentUser.role === 'leader' ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+                    <StatusCard title="ต้องการการชาร์จด่วน!" count="2" icon={<AlertTriangle color="#f43f5e" />} color="#fff1f2" borderColor="#ffe4e6" />
+                    <StatusCard title="Runner ที่รายงานแล้ว" count="3/3" icon={<Users color="#6366f1" />} color="#eef2ff" borderColor="#e0e7ff" />
+                    <StatusCard title="ความสุขเฉลี่ยทีม" count="3.7" icon={<Smile color="#10b981" />} color="#ecfdf5" borderColor="#d1fae5" />
+                  </div>
+                  <div style={{ background: '#fff', borderRadius: '3rem', border: '1px solid #f1f5f9', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead style={{ background: '#f8fafc', fontSize: '10px', textTransform: 'uppercase', fontWeight: 900, color: '#94a3b8' }}>
+                        <tr>
+                          {['Runner','Happy','Stress','Load','Status'].map((h,i) => (
+                            <th key={h} style={{ padding: '32px', textAlign: i === 4 ? 'center' : 'left' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {USERS.filter(u => u.role === 'member').map(u => (
+                          <tr key={u.id} style={{ borderTop: '1px solid #f8fafc', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <td style={{ padding: '32px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '12px' }}><span style={{ fontSize: '24px' }}>{u.avatar}</span><span style={{ fontSize: '14px' }}>{u.name}</span></td>
+                            <td style={{ padding: '32px', fontWeight: 700, color: '#d97706', fontSize: '14px' }}>4/5</td>
+                            <td style={{ padding: '32px', fontWeight: 700, color: '#f43f5e', fontSize: '14px' }}>2/5</td>
+                            <td style={{ padding: '32px', fontWeight: 700, color: '#4f46e5', fontSize: '14px' }}>3/5</td>
+                            <td style={{ padding: '32px', textAlign: 'center' }}>
+                              <span style={{ color: '#10b981', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                <Zap size={12} fill="currentColor" /> All Good
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div style={{ maxWidth: '672px', margin: '0 auto', background: '#fff', padding: '48px', borderRadius: '3.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9' }}>
+                  <h3 style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#1e293b', marginBottom: '32px' }}>How are you today, {currentUser.name}?</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                    {['ความสุขวันนี้', 'ความเครียด', 'ปริมาณงาน'].map(label => (
+                      <div key={label}>
+                        <span style={{ fontWeight: 900, color: '#64748b', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '0.1em', display: 'block', marginBottom: '16px' }}>{label}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                          {[1,2,3,4,5].map(v => (
+                            <button key={v} style={{ flex: 1, padding: '16px', borderRadius: '16px', border: '2px solid #f1f5f9', fontWeight: 900, background: '#fff', cursor: 'pointer', fontSize: '14px', transition: 'all 0.2s' }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.color = '#4f46e5'; }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = '#f1f5f9'; e.currentTarget.style.color = 'inherit'; }}
+                            >{v}</button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <button style={{ width: '100%', background: '#4f46e5', color: '#fff', padding: '24px', borderRadius: '2rem', fontWeight: 900, textTransform: 'uppercase', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#4338ca'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#4f46e5'}
+                    >ส่งรายงานประจำวัน</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── EXCELLENCE INDEX ── */}
+          {activeTab === 'index' && (
+            <div style={{ maxWidth: '1280px', margin: '0 auto', paddingBottom: '80px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
+                {/* Radar */}
+                <div style={{ background: '#fff', padding: '48px', borderRadius: '3.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '48px' }}>
+                    <h3 style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.05em', color: '#1e293b' }}>Excellence Radar</h3>
+                    {currentUser.role === 'leader' && (
+                      <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)}
+                        style={{ background: '#f8fafc', border: '2px solid #f1f5f9', borderRadius: '16px', padding: '12px 24px', fontSize: '10px', fontWeight: 900, outline: 'none', textTransform: 'uppercase' }}
+                      >
+                        {USERS.filter(u => u.role === 'member').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    )}
+                  </div>
+                  <div style={{ height: '400px', width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="80%"
+                        data={teamStats[currentUser.role === 'leader' ? selectedMemberId : currentUser.id] || DEFAULT_STATS}
+                      >
+                        <PolarGrid stroke="#f1f5f9" strokeWidth={2} />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} axisLine={false} tick={false} />
+                        <Radar name="Performance" dataKey="A" stroke="#4f46e5" strokeWidth={4} fill="#4f46e5" fillOpacity={0.5} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Evaluation panel */}
+                <div style={{ background: '#fff', padding: '48px', borderRadius: '3.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}>
+                  {currentUser.role === 'leader' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                      <h4 style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#1e293b', display: 'flex', alignItems: 'center' }}>
+                        <Award style={{ marginRight: '12px', color: '#6366f1' }} /> Evaluation
+                      </h4>
+                      {teamStats[selectedMemberId].map(stat => (
+                        <div key={stat.subject}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{stat.subject}</span>
+                            <span style={{ fontSize: '20px', fontWeight: 900, color: '#4f46e5' }}>{stat.A}%</span>
+                          </div>
+                          <input type="range" min="0" max="100" value={stat.A}
+                            onChange={e => handleStatChange(stat.subject, e.target.value)}
+                            style={{ width: '100%', height: '8px', accentColor: '#4f46e5', cursor: 'pointer' }}
+                          />
+                        </div>
+                      ))}
+                      <button style={{ width: '100%', marginTop: '24px', background: '#4f46e5', color: '#fff', padding: '24px', borderRadius: '2rem', fontWeight: 900, textTransform: 'uppercase', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#4338ca'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#4f46e5'}
+                      >บันทึกผลการประเมิน</button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '80px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div style={{ width: '96px', height: '96px', background: '#eef2ff', borderRadius: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '32px' }}><Trophy size={48} color="#4f46e5" /></div>
+                      <h4 style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#1e293b', marginBottom: '16px' }}>Your Professional Stats</h4>
+                      <p style={{ color: '#94a3b8', fontWeight: 500 }}>นี่คือข้อมูลสรุปทักษะของคุณที่ได้รับการประเมินจากหัวหน้าทีม</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </main>
+    </div>
+  );
+}
